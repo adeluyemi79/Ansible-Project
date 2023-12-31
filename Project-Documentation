@@ -1,0 +1,217 @@
+Step 1: Two Virtual Machines (Ec2) were launched with one being the ansible(master) server and the other being the worker node where all the tasks were performed.
+	Amazon Linux 2 was selected as AMI.
+	t3. medium was selected as the instance type.
+	A new Key pair was created.
+	A new Security Group was created allowing SSH traffic and HTTP traffic from anywhere.
+	Two instances (ec2 machine) were launched, Ansible server and Ansible node.
+
+Step 2: connected two the machine and Install Ansible:
+on the Ansible-server only:
+	Sudo su
+	yum install https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm
+	yum update -y
+	yum install git python python-level python-pip openssl ansible -y
+	ansible –version
+	Host attached using the command vi /etc/ansible/hosts
+	[demo]
+Private ip of the node
+	vi /etc/ansible/ansible.cfg   # ansible configuration
+	Removed # from Inventory.
+	Removed # from sudo-user.
+On the Ansible-server and ansible nodes
+	Adduser ansible # added a user ansible
+	Passwd ansible # creating a password for the user ansible
+	Visudo # provided authentication right to the ansible user so that the ansible user can perform sudo commands.
+	Added ansible ALL=(ALL)NOPASSWD:ALL below find # All root to run any command.
+On the Ansible-server only
+	Su –  ansible  # logged in as ansible user
+	Check completed to confirm that software can be installed via ansible user.
+	Exit # Exited from the ansible user.
+On the Ansible-server and Ansible-node servers:
+	Vi /etc/ssh/sshd_config
+	Removed # from permit root login Yes.
+	Removed # from password authentication Yes.
+	Added # to password authentication: No
+	Service sshd restart
+Ansible-server only:
+	Su –  ansible #logged in as ansible user.
+	ssh private ip of the node #successfully connected to the Ansible-node from the Ansible-server Via ssh.
+	Created a trust relationship by removing password Authentication on the Ansible-server.
+	su –  ansible  # logged in as ansible user.
+	ssh-keygen(enter-enter-enter)
+	ls – a
+	cd .ssh/
+	ls
+	ssh-copy-id ansible@private ip of the ansible-node # this removes password authentication when trying to ssh into the node from the ansible server.
+	Exit
+	Ansible demo –list-hosts   #displayed the hosts ip
+Step 3: Installed Jenkins on the Ansible-server
+	sudo yum update –y
+	sudo wget -O /etc/yum.repos.d/jenkins.repo  https://pkg.jenkins.io/redhat-stable/jenkins.repo
+	sudo amazon-linux-extras install java-openjdk11 -y
+	sudo rpm --import https://pkg.jenkins.io/redhat-stable/jenkins.io-2023.key
+	sudo yum upgrade
+	sudo yum install jenkins -y
+	sudo systemctl enable Jenkins.
+	sudo systemctl start Jenkins.
+	sudo systemctl status Jenkins
+	port 8080 was enabled on the Ansible-server.
+	Security Group Inbound rules edited to allow all traffic from anywhere.
+	With the public ip of the Ansible-server on port 8080, Jenkins server was launched.
+Getting Started
+Unlock Jenkins
+To ensure Jenkins is securely set up by the administrator, a password has been written to the log (not sure where to find it?) and this file on the server:
+/var/lib/jenkins/secrets/initialAdminPassword
+Please copy the password from either location and paste it below.
+Administrator password
+
+	Sudo cat /var/lib/jenkins/secrets/initialAdminPassword # to generate a login password.
+
+Getting Started
+Jenkins is ready!
+Your Jenkins setup is complete.
+Start using Jenkins
+Jenkins 2.426.1
+
+Step 4: Installed Ansible Plugin on Jenkins
+	Manage jenkins -> plugin -> available plugin -> ansible.
+	manage jenkins -> tools -> add ansible.
+	name – Ansible
+	path to Ansible executables directory:  /usr/bin
+	At /usr/bin the executable of the ansible is present
+	Save
+
+Step 5: On Jenkins Dashboard, a new Item was Created.
+	jenkins dashboard -> create a new item.
+	Name of item – Ansible Project
+	Selected Pipeline
+	Selected Pipeline syntax
+	In the pipeline syntax:
+	Sample step – ansible playbook: Invoke an ansible playbook.
+	Playbook file path in workspace - CEPPlaybookDockerDeployment.yml
+	Inventory File path in workspace - dev.inv
+	Ssh connection credentials 
+	Jenkins provider credential
+	Kind – SSH username with Private key
+	ID:  ansibleuser.
+	Username: ec2-user 
+	Downloaded the private key created, open it in a note pad, copy the pem file and paste it key value.
+	Host SSH was Disabled.
+	Pipeline Script generated.
+	The dev.inv file was updated to the current private ip address of the Ansible node.
+ 
+Back in the Jenkins pipeline:
+ The credentials were added to the pipeline script generated from the pipeline syntax as shown Below:
+
+
+pipeline {
+agent any
+stages {
+stage ('Clone the playbook repo')
+{
+steps {
+git branch: 'main', url: 'https://github.com/adeluyemi79/CEP-Ansible-1'
+}
+}
+stage ('Playbook to build and deploy code')
+{
+steps {
+ansiblePlaybook credentialsId: 'ansibleuser', installation: 'Ansible', inventory: 'dev.inv', playbook: 'CEPPlaybookDockerDeployment.yml', vaultTmpPath: ''
+}
+}
+}
+}
+}
+The Pipeline was running.
+Build now.
+
+Console Output:
+Console Output
+Started by user Adeyemi Adelu
+[Pipeline] Start of Pipeline
+[Pipeline] node
+Running on Jenkins in /var/lib/jenkins/workspace/Ansibleproject
+[Pipeline] {
+[Pipeline] stage
+[Pipeline] { (Clone the playbook repo)
+[Pipeline] git
+The recommended git tool is: NONE
+No credentials specified
+ > git rev-parse --resolve-git-dir /var/lib/jenkins/workspace/Ansibleproject/.git # timeout=10
+Fetching changes from the remote Git repository
+ > git config remote.origin.url https://github.com/adeluyemi79/CEP-Ansible-1 # timeout=10
+Fetching upstream changes from https://github.com/adeluyemi79/CEP-Ansible-1
+ > git --version # timeout=10
+ > git --version # 'git version 2.40.1'
+ > git fetch --tags --force --progress -- https://github.com/adeluyemi79/CEP-Ansible-1 +refs/heads/*:refs/remotes/origin/* # timeout=10
+ > git rev-parse refs/remotes/origin/main^{commit} # timeout=10
+Checking out Revision a0990e80fc88527fd20b4b9d9043b50a0369caa8 (refs/remotes/origin/main)
+ > git config core.sparsecheckout # timeout=10
+ > git checkout -f a0990e80fc88527fd20b4b9d9043b50a0369caa8 # timeout=10
+ > git branch -a -v --no-abbrev # timeout=10
+ > git branch -D main # timeout=10
+ > git checkout -b main a0990e80fc88527fd20b4b9d9043b50a0369caa8 # timeout=10
+Commit message: "Update dev.inv"
+First time build. Skipping changelog.
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] stage
+[Pipeline] { (Playbook to build and deploy code)
+[Pipeline] ansiblePlaybook
+[Ansibleproject] $ /usr/bin/ansible-playbook CEPPlaybookDockerDeployment.yml -i dev.inv --private-key /var/lib/jenkins/workspace/Ansibleproject/ssh1679402215074615347.key -u ec2-user
+
+PLAY [demo] ********************************************************************
+
+TASK [Gathering Facts] *********************************************************
+[WARNING]: Platform linux on host 172.31.35.233 is using the discovered Python.
+interpreter at /usr/bin/python, but future installation of another Python
+interpreter could change this. See https://docs.ansible.com/ansible/2.9/referen
+ce_appendices/interpreter_discovery.html for more information.
+ok: [172.31.35.233]
+
+TASK [Install git and docker] **************************************************
+changed: [172.31.35.233] => (item=git)
+changed: [172.31.35.233] => (item=docker)
+
+TASK [Clone the repo which has build war file and dockerfile] ******************
+changed: [172.31.35.233]
+
+TASK [Start the docker service] ************************************************
+changed: [172.31.35.233]
+
+TASK [change the directory to /tmp/mycode and then  Build the dockerfile] ******
+changed: [172.31.35.233]
+
+TASK [Runt he Image to deploy app on the container] ****************************
+changed: [172.31.35.233]
+
+PLAY RECAP *********************************************************************
+172.31.35.233              : ok=6    changed=5    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+[Pipeline] }
+[Pipeline] // stage
+[Pipeline] }
+[Pipeline] // node
+[Pipeline] End of Pipeline
+Finished: SUCCESS
+
+ Ansibleproject
+Add description
+Disable Project
+
+Stage View
+	Clone the playbook repo	Playbook to build and deploy code
+Average stage times:
+(Average full run time: ~50s)	350ms	48s
+#1
+Nov 19
+15:45
+No Changes	350ms	48s
+Permalinks
+•	Last build (#1), 31 min ago
+•	Last stable build (#1), 31 min ago
+•	Last successful build (#1), 31 min ago
+•	Last completed build (#1), 31 min ago
+
+NOTE: All the Screenshots of the step by step in building this pipeline were taken and submitted along with this Documentation.
+
